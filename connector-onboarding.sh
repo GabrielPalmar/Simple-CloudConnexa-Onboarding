@@ -8,7 +8,7 @@ for pkg in jq curl; do
 done
 
 # Check for OpenVPN3 installation
-if ! command openvpn3 --help &> /dev/null; then
+if ! command openvpn3 &> /dev/null; then
     # Install the OpenVPN repository key used by the OpenVPN packages
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://packages.openvpn.net/packages-repo.gpg | sudo tee /etc/apt/keyrings/openvpn.asc &> /dev/null
@@ -21,10 +21,17 @@ if ! command openvpn3 --help &> /dev/null; then
     sudo apt install python3-openvpn-connector-setup -y &> /dev/null
 fi
 
-# API Data
-API_URL='https://gabrielpalmar.api.openvpn.com'
+# API Configuration
 CLIENT_ID="${OPENVPN_CLIENT_ID:-}"
 CLIENT_SECRET="${OPENVPN_CLIENT_SECRET:-}"
+VPN_REGION="${VPNREGION:-us-mia}"
+API_URL="https://$(echo "$OPENVPN_CLIENT_ID" | awk -F '.' '{print $2}').api.openvpn.com"
+
+# Validate environment variables
+if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+    echo "Error: OPENVPN_CLIENT_ID and OPENVPN_CLIENT_SECRET must be set"
+    exit 1
+fi
 
 # Generate OAuth token:
 API_TOKEN=$(curl -X POST "${API_URL}/api/v1/oauth/token?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials" | jq -r '.access_token')
@@ -46,7 +53,7 @@ NET_PAYLOAD=$(cat <<EOF
     {
       "name": "Network A Connector",
       "description": "$UUID",
-      "vpnRegionId": "us-mia"
+      "vpnRegionId": "$VPN_REGION"
     }
   ],
   "tunnelingProtocol": "OPENVPN"
